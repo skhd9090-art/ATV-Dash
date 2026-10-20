@@ -29,6 +29,7 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
     <label class="field">Layout <select id="layoutSelect"><option value="1">1 chart</option><option value="2">2 columns</option><option value="3" selected>3 columns</option><option value="4">4 columns</option></select></label>
     <label class="field">Interval <select id="intervalSelect"><option>1</option><option>5</option><option selected>15</option><option>30</option><option>60</option><option>240</option><option>D</option><option>W</option></select></label>
     <button id="tvModeBtn">▣ TV display mode</button>
+    <button id="wakeBtn" class="active" title="Toggle keep screen awake">⚡ Keep awake: ON</button>
     <button id="resetBtn">Reset</button>
     <div class="spacer"></div>
     <span class="status">Prices: Binance public stream</span>
@@ -446,6 +447,89 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
     $('tvModeBtn').textContent=on?'▣ Exit TV display mode':'▣ TV display mode';
     if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
     else if(!on&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+    if(on) requestWakeLock();
+  };
+
+  // Screen Wake Lock & TV Screensaver Keep-Alive
+  let wakeLock = null;
+  let keepAwakeEnabled = true;
+  let keepAliveVideoEl = null;
+
+  function enableVideoWakeLock() {
+    if (keepAliveVideoEl) return;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 4;
+      canvas.height = 4;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 4, 4);
+      if (canvas.captureStream) {
+        const stream = canvas.captureStream(1);
+        const vid = document.createElement('video');
+        vid.id = 'tvKeepAliveVid';
+        vid.muted = true;
+        vid.playsInline = true;
+        vid.loop = true;
+        vid.style.position = 'fixed';
+        vid.style.width = '1px';
+        vid.style.height = '1px';
+        vid.style.opacity = '0.001';
+        vid.style.pointerEvents = 'none';
+        vid.srcObject = stream;
+        vid.play().catch(()=>{});
+        document.body.appendChild(vid);
+        keepAliveVideoEl = vid;
+      }
+    } catch(e) {}
+  }
+
+  async function requestWakeLock() {
+    if (!keepAwakeEnabled) return;
+    enableVideoWakeLock();
+    if ('wakeLock' in navigator) {
+      try {
+        if (!wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+          });
+        }
+      } catch(err) {
+        console.warn('WakeLock warning:', err);
+      }
+    }
+  }
+
+  function updateWakeBtn() {
+    const btn = $('wakeBtn');
+    if (!btn) return;
+    if (keepAwakeEnabled) {
+      btn.textContent = '⚡ Keep awake: ON';
+      btn.classList.add('active');
+    } else {
+      btn.textContent = '⚡ Keep awake: OFF';
+      btn.classList.remove('active');
+    }
+  }
+
+  $('wakeBtn').onclick = async () => {
+    keepAwakeEnabled = !keepAwakeEnabled;
+    updateWakeBtn();
+    if (keepAwakeEnabled) {
+      await requestWakeLock();
+      toast('Screen keep-awake enabled');
+    } else {
+      if (wakeLock) {
+        try { await wakeLock.release(); } catch(e){}
+        wakeLock = null;
+      }
+      if (keepAliveVideoEl) {
+        try { keepAliveVideoEl.pause(); keepAliveVideoEl.remove(); } catch(e){}
+        keepAliveVideoEl = null;
+      }
+      toast('Screen keep-awake disabled');
+    }
   };
   $('resetBtn').onclick=()=>{
     if(confirm('Reset watchlist, charts and layout to defaults?')){
@@ -519,14 +603,21 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
     if(document.visibilityState==='visible'){
       connect();
       if(syncEnabled) pullRemoteConfig();
+      if(keepAwakeEnabled) requestWakeLock();
     }
   });
-  window.addEventListener('beforeunload',()=>{if(socket)socket.close()});
+  window.addEventListener('click',()=>{if(keepAwakeEnabled)requestWakeLock()},{once:true});
+  window.addEventListener('keydown',()=>{if(keepAwakeEnabled)requestWakeLock()},{once:true});
+  window.addEventListener('beforeunload',()=>{
+    if(socket)socket.close();
+    if(wakeLock){try{wakeLock.release()}catch(e){}}
+  });
 
   renderWatch();
   renderCharts();
   connect();
   setupRealtimeSync();
+  requestWakeLock();
 })();
 </script>
 </body>
