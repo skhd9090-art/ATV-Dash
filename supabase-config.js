@@ -1,11 +1,10 @@
-// Copy this file to supabase-config.js and fill in your own Supabase project values.
-// Do not put a Supabase service_role/secret key here. Use only the publishable/anon key.
+// Supabase configuration for Crypto Wall
+// Safe for public browser code. NEVER put a Supabase service_role/secret key here.
 window.CRYPTO_WALL_CONFIG = {
-  url: "https://YOUR_PROJECT_REF.supabase.co",
-  anonKey: "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY",
-  // Use the same values on your phone and TV. Make the room key long and hard to guess.
+  url: "https://eojmdgrzafssvnojhcop.supabase.co",
+  anonKey: "sb_publishable_XH8FUaSID6IKvY9A5__VRw_3p8jFdRo",
+  // Shared room configuration between Phone and TV
   dashboardId: "living-room-crypto-wall",
-  roomKey: "REPLACE_WITH_A_LONG_RANDOM_ROOM_KEY",
-  // Optional label for debugging; not used for authentication.
+  roomKey: "room_cw_sync_9a8b7c6d5e4f3a2b1c0d",
   clientId: "browser"
 };

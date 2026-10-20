@@ -107,7 +107,7 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
 </div>
 <div id="toast" class="toast hide"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./supabase-config.js"></script>
+<script src="./supabase-config.js?v=20261021"></script>
 <script>
 (() => {
   const defaults=['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','TAOUSDT'];
@@ -135,17 +135,19 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
     try{localStorage.setItem('cryptowall-dashboard-id',paramDash)}catch(e){}
   }
 
-  let localRoomKey='', localDashId='';
+  let localUrl='', localAnonKey='', localRoomKey='', localDashId='';
   try{
+    localUrl=localStorage.getItem('cryptowall-supabase-url')||'';
+    localAnonKey=localStorage.getItem('cryptowall-supabase-key')||'';
     localRoomKey=localStorage.getItem('cryptowall-room-key')||'';
     localDashId=localStorage.getItem('cryptowall-dashboard-id')||'';
   }catch(e){}
 
   const syncConfig={
-    url:baseConfig.url||'',
-    anonKey:baseConfig.anonKey||'',
+    url:localUrl||baseConfig.url||'https://eojmdgrzafssvnojhcop.supabase.co',
+    anonKey:localAnonKey||baseConfig.anonKey||'sb_publishable_XH8FUaSID6IKvY9A5__VRw_3p8jFdRo',
     dashboardId:localDashId||baseConfig.dashboardId||'living-room-crypto-wall',
-    roomKey:localRoomKey||baseConfig.roomKey||'',
+    roomKey:localRoomKey||baseConfig.roomKey||'room_cw_sync_9a8b7c6d5e4f3a2b1c0d',
     clientId:'client-'+Math.random().toString(36).substring(2,9)
   };
 
