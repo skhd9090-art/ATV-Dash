@@ -13,6 +13,9 @@ button,input,select{font:inherit}button{background:#1b2a3b;border:1px solid #334
 main{padding:14px;max-width:1800px;margin:auto}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.toolbar .spacer{flex:1}.field{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 8px;color:var(--muted)}select,input{background:#0b111a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px;min-width:0}.field select{border:0;padding:3px}.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}.metric{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}.metric small{color:var(--muted);display:block}.metric strong{font-size:17px;display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis}.green{color:var(--green)}.red{color:var(--red)}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:12px;align-items:start}.charts{display:grid;gap:10px;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));align-content:start}.chart-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}.chart-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}.chart-title{font-weight:700}.chart-price{font-size:12px;color:var(--muted)}.chart-frame{height:245px;background:#0b111a}.chart-frame iframe{width:100%;height:100%;border:0}.empty{height:245px;display:grid;place-items:center;color:var(--muted);text-align:center;padding:20px}
 .sidebar{display:grid;gap:10px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.panel h3{font-size:13px;margin:0;padding:11px 12px;border-bottom:1px solid var(--line)}.watchlist{padding:4px 0}.coin{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 12px;border-bottom:1px solid #202b39}.coin:last-child{border-bottom:0}.coin-name{font-weight:700}.coin-symbol{font-size:11px;color:var(--muted)}.coin-price{text-align:right;font-variant-numeric:tabular-nums}.coin-change{font-size:11px;text-align:right}.watch-controls{padding:10px;display:grid;gap:8px}.watch-controls input{width:100%}.watch-actions{display:flex;gap:6px;flex-wrap:wrap}.note{color:var(--muted);font-size:11px;padding:10px 12px}.footer{padding:14px 2px;color:var(--muted);font-size:11px}.hide{display:none!important}.modal{position:fixed;inset:0;background:#0009;z-index:10;display:grid;place-items:center;padding:15px}.modal-box{width:min(520px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.modal-box p{color:var(--muted);font-size:12px}.symbols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.symbols label{display:flex;gap:7px;align-items:center;background:var(--panel2);padding:8px;border-radius:7px}.symbols input{min-width:auto}.toast{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:#26384c;padding:10px 14px;border-radius:9px;z-index:20;box-shadow:0 5px 24px #0008;max-width:90vw}button.coin-del:hover{color:var(--red)!important;border-color:#ff647c66!important;background:#ff647c22!important}
+.active-beacon{display:flex;align-items:center;gap:6px;background:#131c28;border:1px solid #243548;border-radius:6px;padding:3px 8px;font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.beacon-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px #22c983;animation:beaconPulse 2s infinite}
+@keyframes beaconPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.35;transform:scale(0.85)}}
 @media(max-width:1100px){.layout{grid-template-columns:1fr}.sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){main{padding:9px}.topbar{padding:10px}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}.sidebar{grid-template-columns:1fr}.chart-frame{height:270px}.brand{font-size:14px}.status{font-size:10px}}
 body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display:none!important}body.tv-mode main{padding:8px}body.tv-mode .layout{grid-template-columns:1fr}body.tv-mode .sidebar{display:none}body.tv-mode .charts{grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:7px}body.tv-mode .chart-frame{height:calc((100vh - 130px)/var(--rows,2));min-height:150px}body.tv-mode .summary{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:7px}body.tv-mode .metric{padding:6px 10px}body.tv-mode .metric strong{font-size:15px}
@@ -20,7 +23,13 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">◈ <span>CRYPTO</span> WALL <span style="color:var(--muted);font-weight:500">/ prototype</span></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="brand">◈ <span>CRYPTO</span> WALL <span style="color:var(--muted);font-weight:500">/ live</span></div>
+    <div class="active-beacon" title="Always-On Anti-Inactivity Beacon Active">
+      <span class="beacon-dot"></span>
+      <span id="liveClock">00:00:00 UTC</span>
+    </div>
+  </div>
   <div class="status"><span class="dot" id="wsDot"></span><span id="wsStatus">Connecting to Binance…</span></div>
 </header>
 <main>
@@ -450,36 +459,67 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
     if(on) requestWakeLock();
   };
 
-  // Screen Wake Lock & TV Screensaver Keep-Alive
+  // Screen Wake Lock & TV Screensaver Anti-Inactivity Engine
   let wakeLock = null;
   let keepAwakeEnabled = true;
   let keepAliveVideoEl = null;
+  let canvasTickTimer = null;
+
+  function updateClock(){
+    const d=new Date();
+    const h=String(d.getUTCHours()).padStart(2,'0');
+    const m=String(d.getUTCMinutes()).padStart(2,'0');
+    const s=String(d.getUTCSeconds()).padStart(2,'0');
+    const el=$('liveClock');
+    if(el) el.textContent=`${h}:${m}:${s} UTC`;
+  }
+  setInterval(updateClock,1000);
+  updateClock();
 
   function enableVideoWakeLock() {
     if (keepAliveVideoEl) return;
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = 4;
-      canvas.height = 4;
+      canvas.width = 16;
+      canvas.height = 16;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, 4, 4);
       if (canvas.captureStream) {
-        const stream = canvas.captureStream(1);
+        const stream = canvas.captureStream(2);
+        let frameCount = 0;
+        clearInterval(canvasTickTimer);
+        canvasTickTimer = setInterval(() => {
+          frameCount++;
+          ctx.fillStyle = (frameCount % 2 === 0) ? '#05090f' : '#080d14';
+          ctx.fillRect(0, 0, 16, 16);
+        }, 1000);
+
         const vid = document.createElement('video');
         vid.id = 'tvKeepAliveVid';
         vid.muted = true;
         vid.playsInline = true;
         vid.loop = true;
+        vid.autoplay = true;
         vid.style.position = 'fixed';
-        vid.style.width = '1px';
-        vid.style.height = '1px';
+        vid.style.width = '2px';
+        vid.style.height = '2px';
+        vid.style.top = '0';
+        vid.style.left = '0';
         vid.style.opacity = '0.001';
         vid.style.pointerEvents = 'none';
         vid.srcObject = stream;
         vid.play().catch(()=>{});
         document.body.appendChild(vid);
         keepAliveVideoEl = vid;
+
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+          try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: 'Crypto Wall Display',
+              artist: 'Always-On Live Kiosk'
+            });
+          } catch(e) {}
+        }
       }
     } catch(e) {}
   }
@@ -500,6 +540,20 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
       }
     }
   }
+
+  // Periodic Anti-Idle Pulse (resets TV browser inactivity timers every 20s)
+  setInterval(() => {
+    if (!keepAwakeEnabled) return;
+    try {
+      window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 10, clientY: 10 }));
+      if (keepAliveVideoEl && keepAliveVideoEl.paused) {
+        keepAliveVideoEl.play().catch(()=>{});
+      }
+      if ('mediaSession' in navigator && navigator.mediaSession.playbackState !== 'playing') {
+        navigator.mediaSession.playbackState = 'playing';
+      }
+    } catch(e) {}
+  }, 20000);
 
   function updateWakeBtn() {
     const btn = $('wakeBtn');
@@ -527,6 +581,10 @@ body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display
       if (keepAliveVideoEl) {
         try { keepAliveVideoEl.pause(); keepAliveVideoEl.remove(); } catch(e){}
         keepAliveVideoEl = null;
+      }
+      if (canvasTickTimer) clearInterval(canvasTickTimer);
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
       }
       toast('Screen keep-awake disabled');
     }
