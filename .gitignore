@@ -1,0 +1,5 @@
+.DS_Store
+*.zip
+crypto-wall-companion/
+# Optional local-only config if you prefer to keep your project details out of Git history
+# supabase-config.js

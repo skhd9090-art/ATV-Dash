@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto Wall — Dashboard Prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#090d14;--panel:#111823;--panel2:#151f2c;--line:#263345;--text:#e7edf5;--muted:#8ea0b6;--green:#22c983;--red:#ff647c;--accent:#72a7ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,select{font:inherit}button{background:#1b2a3b;border:1px solid #33475f;color:var(--text);border-radius:8px;padding:8px 11px;cursor:pointer}button:hover{border-color:var(--accent)}button.primary{background:#315fa8;border-color:#4778c6}button.active{background:#244b3c;border-color:#2c9b6c}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0c121b;position:sticky;top:0;z-index:5}
+.brand{font-size:16px;font-weight:750;letter-spacing:.2px}.brand span{color:var(--accent)}.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}.dot{width:8px;height:8px;border-radius:50%;background:#8b96a5}.dot.ok{background:var(--green);box-shadow:0 0 9px #22c98366}.dot.bad{background:var(--red)}
+main{padding:14px;max-width:1800px;margin:auto}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.toolbar .spacer{flex:1}.field{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 8px;color:var(--muted)}select,input{background:#0b111a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px;min-width:0}.field select{border:0;padding:3px}.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}.metric{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}.metric small{color:var(--muted);display:block}.metric strong{font-size:17px;display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis}.green{color:var(--green)}.red{color:var(--red)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:12px;align-items:start}.charts{display:grid;gap:10px;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));align-content:start}.chart-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}.chart-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}.chart-title{font-weight:700}.chart-price{font-size:12px;color:var(--muted)}.chart-frame{height:245px;background:#0b111a}.chart-frame iframe{width:100%;height:100%;border:0}.empty{height:245px;display:grid;place-items:center;color:var(--muted);text-align:center;padding:20px}
+.sidebar{display:grid;gap:10px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.panel h3{font-size:13px;margin:0;padding:11px 12px;border-bottom:1px solid var(--line)}.watchlist{padding:4px 0}.coin{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 12px;border-bottom:1px solid #202b39}.coin:last-child{border-bottom:0}.coin-name{font-weight:700}.coin-symbol{font-size:11px;color:var(--muted)}.coin-price{text-align:right;font-variant-numeric:tabular-nums}.coin-change{font-size:11px;text-align:right}.watch-controls{padding:10px;display:grid;gap:8px}.watch-controls input{width:100%}.watch-actions{display:flex;gap:6px;flex-wrap:wrap}.note{color:var(--muted);font-size:11px;padding:10px 12px}.footer{padding:14px 2px;color:var(--muted);font-size:11px}.hide{display:none!important}.modal{position:fixed;inset:0;background:#0009;z-index:10;display:grid;place-items:center;padding:15px}.modal-box{width:min(520px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.modal-box p{color:var(--muted);font-size:12px}.symbols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.symbols label{display:flex;gap:7px;align-items:center;background:var(--panel2);padding:8px;border-radius:7px}.symbols input{min-width:auto}.toast{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:#26384c;padding:10px 14px;border-radius:9px;z-index:20;box-shadow:0 5px 24px #0008;max-width:90vw}
+@media(max-width:1100px){.layout{grid-template-columns:1fr}.sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){main{padding:9px}.topbar{padding:10px}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}.sidebar{grid-template-columns:1fr}.chart-frame{height:270px}.brand{font-size:14px}.status{font-size:10px}}
+body.tv-mode .topbar,body.tv-mode .toolbar .hide-tv,body.tv-mode .footer{display:none!important}body.tv-mode main{padding:8px}body.tv-mode .layout{grid-template-columns:1fr}body.tv-mode .sidebar{display:none}body.tv-mode .charts{grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:7px}body.tv-mode .chart-frame{height:calc((100vh - 130px)/var(--rows,2));min-height:150px}body.tv-mode .summary{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:7px}body.tv-mode .metric{padding:6px 10px}body.tv-mode .metric strong{font-size:15px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">◈ <span>CRYPTO</span> WALL <span style="color:var(--muted);font-weight:500">/ prototype</span></div>
+  <div class="status"><span class="dot" id="wsDot"></span><span id="wsStatus">Connecting to Binance…</span></div>
+</header>
+<main>
+  <div class="toolbar">
+    <button id="manageBtn" class="primary">☷ Manage charts</button>
+    <label class="field">Layout <select id="layoutSelect"><option value="1">1 chart</option><option value="2">2 columns</option><option value="3" selected>3 columns</option><option value="4">4 columns</option></select></label>
+    <label class="field">Interval <select id="intervalSelect"><option>1</option><option>5</option><option selected>15</option><option>30</option><option>60</option><option>240</option><option>D</option><option>W</option></select></label>
+    <button id="tvModeBtn">▣ TV display mode</button>
+    <button id="resetBtn">Reset</button>
+    <div class="spacer"></div>
+    <span class="status">Prices: Binance public stream</span>
+    <span class="status hide-tv"><span class="dot" id="syncDotTop"></span><span id="syncStatusTop">Sync setup pending</span></span>
+  </div>
+  <section class="summary">
+    <div class="metric"><small>BTC / USDT</small><strong id="btcPrice">—</strong><small id="btcChange">Waiting for stream</small></div>
+    <div class="metric"><small>ETH / USDT</small><strong id="ethPrice">—</strong><small id="ethChange">Waiting for stream</small></div>
+    <div class="metric"><small>Watchlist</small><strong id="watchCount">6 assets</strong><small>Live ticker updates</small></div>
+    <div class="metric"><small>Charts visible</small><strong id="chartCount">6 charts</strong><small>TradingView embeds</small></div>
+  </section>
+  <div class="layout">
+    <section class="charts" id="charts"></section>
+    <aside class="sidebar">
+      <section class="panel">
+        <h3>LIVE WATCHLIST <span style="float:right;color:var(--muted);font-weight:400">USDT</span></h3>
+        <div id="watchlist" class="watchlist"></div>
+        <div class="note">Prices update from Binance's public market-data stream. A short delay can occur when the browser is suspended.</div>
+      </section>
+      <section class="panel">
+        <h3>QUICK CONTROLS</h3>
+        <div class="watch-controls">
+          <label style="color:var(--muted);font-size:12px">Add Binance symbol</label>
+          <input id="addSymbol" placeholder="e.g. TAOUSDT or XRPUSDT" autocomplete="off">
+          <div class="watch-actions"><button id="addBtn" class="primary">+ Add symbol</button><button id="manageBtn2">Choose charts</button></div>
+          <div class="note" style="padding:4px 0">Tip: use symbols like BTCUSDT, ETHUSDT, SOLUSDT. Chart embeds are supplied by TradingView.</div>
+        </div>
+      </section>
+      <section class="panel">
+        <h3>DEVICE / SYNC</h3>
+        <div class="watch-controls">
+          <div class="status"><span class="dot" id="syncDot"></span><span id="syncStatusText">Checking sync setup…</span></div>
+          <p style="margin:0;color:var(--muted);font-size:12px">When Supabase is configured, changes made on any device using the same dashboard ID and room key sync to the other open browsers.</p>
+          <div class="watch-actions">
+            <button id="copyConfig">Copy config</button>
+            <button id="pairBtn" class="primary">🔗 Pairing &amp; Keys</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+  <div class="footer">Prototype · Not financial advice · TradingView charts require internet access and may load asynchronously.</div>
+</main>
+<div id="modal" class="modal hide">
+  <div class="modal-box">
+    <div class="modal-head"><strong>Manage visible charts</strong><button id="closeModal">✕</button></div>
+    <p>Select which symbols appear as chart tiles. Your watchlist can contain additional symbols.</p>
+    <div id="symbolChoices" class="symbols"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button id="cancelModal">Cancel</button><button id="saveCharts" class="primary">Apply changes</button></div>
+  </div>
+</div>
+<div id="pairModal" class="modal hide">
+  <div class="modal-box">
+    <div class="modal-head"><strong>Pair Devices / Sync Keys</strong><button id="closePairModal">✕</button></div>
+    <p>Both your TV and phone must share the same Dashboard ID and Room Key (min 20 chars). Changes sync in real-time between open browsers.</p>
+    <div style="display:grid;gap:10px;margin:12px 0">
+      <label style="display:grid;gap:4px;font-size:12px;color:var(--muted)">Dashboard ID
+        <input id="syncDashId" placeholder="living-room-crypto-wall">
+      </label>
+      <label style="display:grid;gap:4px;font-size:12px;color:var(--muted)">Room Key (minimum 20 characters)
+        <div style="display:flex;gap:6px">
+          <input id="syncRoomKey" type="password" style="flex:1" placeholder="Enter or generate 20+ char room key">
+          <button id="toggleRoomKey" type="button" style="padding:6px 10px" title="Show/Hide">👁</button>
+          <button id="genRoomKey" type="button" style="padding:6px 10px" title="Generate secure key">🎲 Gen</button>
+        </div>
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:14px">
+      <button id="copyPairUrl" type="button">📋 Copy Pairing URL</button>
+      <div style="display:flex;gap:8px">
+        <button id="cancelPairModal" type="button">Cancel</button>
+        <button id="savePairModal" class="primary" type="button">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast hide"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+<script>
+(() => {
+  const defaults=['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','TAOUSDT'];
+  const pretty={BTCUSDT:'Bitcoin',ETHUSDT:'Ethereum',BNBUSDT:'BNB',SOLUSDT:'Solana',XRPUSDT:'XRP',TAOUSDT:'Bittensor',ADAUSDT:'Cardano',DOGEUSDT:'Dogecoin',LINKUSDT:'Chainlink',AVAXUSDT:'Avalanche',LTCUSDT:'Litecoin',SUIUSDT:'Sui',TONUSDT:'Toncoin'};
+  let config={watch:defaults.slice(),charts:defaults.slice(0,6),interval:'15',cols:3,updatedAt:Date.now()};
+  try{
+    const saved=JSON.parse(localStorage.getItem('cryptowall-config')||'null');
+    if(saved&&Array.isArray(saved.watch)&&Array.isArray(saved.charts))config={...config,...saved};
+  }catch(e){}
+
+  let prices={},changes={},socket=null,retryTimer=null,modalDraft=[];
+  let supabaseClient=null, syncChannel=null, syncEnabled=false, applyingRemote=false, pushTimer=null;
+
+  // Configuration resolution: baseConfig -> URL params -> localStorage
+  const baseConfig=window.CRYPTO_WALL_CONFIG||{};
+  const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
+  const searchParams=new URLSearchParams(window.location.search);
+  const paramKey=hashParams.get('key')||searchParams.get('key');
+  const paramDash=hashParams.get('room')||hashParams.get('dashboard')||searchParams.get('room')||searchParams.get('dashboard');
+
+  if(paramKey){
+    try{localStorage.setItem('cryptowall-room-key',paramKey)}catch(e){}
+  }
+  if(paramDash){
+    try{localStorage.setItem('cryptowall-dashboard-id',paramDash)}catch(e){}
+  }
+
+  let localRoomKey='', localDashId='';
+  try{
+    localRoomKey=localStorage.getItem('cryptowall-room-key')||'';
+    localDashId=localStorage.getItem('cryptowall-dashboard-id')||'';
+  }catch(e){}
+
+  const syncConfig={
+    url:baseConfig.url||'',
+    anonKey:baseConfig.anonKey||'',
+    dashboardId:localDashId||baseConfig.dashboardId||'living-room-crypto-wall',
+    roomKey:localRoomKey||baseConfig.roomKey||'',
+    clientId:'client-'+Math.random().toString(36).substring(2,9)
+  };
+
+  const $=id=>document.getElementById(id);
+  const fmt=n=>n==null?'—':Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:n<1?6:2});
+  const clean=s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,'');
+
+  function save(){
+    config.updatedAt=Date.now();
+    try{localStorage.setItem('cryptowall-config',JSON.stringify(config))}catch(e){}
+    if(syncEnabled&&!applyingRemote){
+      clearTimeout(pushTimer);
+      pushTimer=setTimeout(()=>pushRemoteConfig(),250);
+    }
+  }
+
+  function setSyncStatus(text, state='') {
+    const el=$('syncStatusText'), dot=$('syncDot');
+    if(el) el.textContent=text;
+    if(dot) dot.className='dot '+state;
+    const topText=$('syncStatusTop'), topDot=$('syncDotTop');
+    if(topText) topText.textContent=text;
+    if(topDot) topDot.className='dot '+state;
+  }
+
+  async function pushRemoteConfig(){
+    if(!syncEnabled||!supabaseClient)return;
+    config.updatedAt=Date.now();
+    try{
+      const {error}=await supabaseClient.rpc('save_dashboard_state',{
+        p_dashboard_id:syncConfig.dashboardId,
+        p_room_key:syncConfig.roomKey,
+        p_state:config
+      });
+      if(error){
+        setSyncStatus('Sync error — '+(error.message||'check setup'),'bad');
+        console.error('Save sync error:',error);
+        return;
+      }
+      if(syncChannel){
+        const {error: broadcastError}=await syncChannel.send({
+          type:'broadcast',
+          event:'dashboard-update',
+          payload:{config,source:syncConfig.clientId,updatedAt:config.updatedAt}
+        });
+        if(broadcastError) console.warn('Broadcast error:',broadcastError);
+      }
+      setSyncStatus('Synced','ok');
+    }catch(err){
+      setSyncStatus('Sync error','bad');
+      console.error('Push exception:',err);
+    }
+  }
+
+  async function applyRemoteConfig(next){
+    if(!next||!Array.isArray(next.watch)||!Array.isArray(next.charts))return;
+    // Discard outdated incoming updates (Last-Write-Wins conflict resolution)
+    if(next.updatedAt&&config.updatedAt&&next.updatedAt<config.updatedAt){
+      console.log('Ignored older remote update');
+      return;
+    }
+    const changed=JSON.stringify(config)!==JSON.stringify(next);
+    if(!changed)return;
+    applyingRemote=true;
+    try{
+      config={...config,...next,watch:[...new Set(next.watch)],charts:[...new Set(next.charts)]};
+      localStorage.setItem('cryptowall-config',JSON.stringify(config));
+      renderWatch();
+      renderCharts();
+      connect();
+      toast('Dashboard updated from another device');
+    }catch(err){
+      console.error('Apply remote config error:',err);
+    }finally{
+      applyingRemote=false;
+    }
+  }
+
+  async function pullRemoteConfig(){
+    if(!syncEnabled||!supabaseClient)return;
+    try{
+      const {data,error}=await supabaseClient.rpc('get_dashboard_state',{
+        p_dashboard_id:syncConfig.dashboardId,
+        p_room_key:syncConfig.roomKey
+      });
+      if(error){console.warn('Pull remote config error:',error);return;}
+      if(data&&data.config) await applyRemoteConfig(data.config);
+    }catch(err){
+      console.warn('Pull remote exception:',err);
+    }
+  }
+
+  async function setupRealtimeSync(){
+    const hasBaseUrl=syncConfig.url&&!String(syncConfig.url).includes('YOUR_PROJECT');
+    const hasAnon=syncConfig.anonKey&&!String(syncConfig.anonKey).includes('YOUR_SUPABASE');
+    const hasKey=syncConfig.roomKey&&!String(syncConfig.roomKey).includes('REPLACE_WITH');
+    if(!window.supabase||!hasBaseUrl||!hasAnon){
+      setSyncStatus('Sync not configured (needs Supabase URL & Key)','');
+      return;
+    }
+    if(!hasKey){
+      setSyncStatus('Room key needed (open Pairing)','');
+      return;
+    }
+    if(syncConfig.roomKey.length<20){
+      setSyncStatus('Room key must be ≥20 chars','bad');
+      return;
+    }
+
+    try{
+      supabaseClient=window.supabase.createClient(syncConfig.url,syncConfig.anonKey);
+      syncEnabled=true;
+      setSyncStatus('Connecting…','');
+      const {data:initial,error}=await supabaseClient.rpc('get_dashboard_state',{
+        p_dashboard_id:syncConfig.dashboardId,
+        p_room_key:syncConfig.roomKey
+      });
+      if(error){
+        setSyncStatus('Sync setup error: '+(error.message||'check keys'),'bad');
+        console.error('Load sync error:',error);
+        syncEnabled=false;
+        return;
+      }
+      if(initial&&initial.config) await applyRemoteConfig(initial.config);
+
+      if(syncChannel){
+        try{supabaseClient.removeChannel(syncChannel)}catch(e){}
+      }
+      syncChannel=supabaseClient.channel('crypto-wall-'+syncConfig.dashboardId,{config:{broadcast:{self:false}}});
+      syncChannel.on('broadcast',{event:'dashboard-update'},({payload})=>{
+        if(!payload)return;
+        if(payload.source===syncConfig.clientId)return; // Prevent infinite self-echo
+        if(payload.config) applyRemoteConfig(payload.config);
+      }).subscribe(status=>{
+        if(status==='SUBSCRIBED'){
+          setSyncStatus('Realtime connected','ok');
+          pullRemoteConfig();
+        }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+          setSyncStatus('Realtime disconnected','bad');
+        }
+      });
+      // Publish this browser's starting config only if the shared room has no saved state.
+      if(!initial||!initial.config) await pushRemoteConfig();
+    }catch(e){
+      setSyncStatus('Sync init error','bad');
+      console.error('Setup error:',e);
+    }
+  }
+
+  function toast(msg){
+    const el=$('toast');
+    if(!el)return;
+    el.textContent=msg;
+    el.classList.remove('hide');
+    setTimeout(()=>el.classList.add('hide'),2500);
+  }
+
+  function tvSymbol(s){return 'BINANCE:'+s}
+  function displayName(s){return pretty[s]||s.replace('USDT','')}
+
+  function renderWatch(){
+    $('watchlist').innerHTML='';
+    config.watch.forEach(s=>{
+      const p=prices[s],c=changes[s];
+      const row=document.createElement('div');row.className='coin';
+      row.innerHTML=`<div><div class="coin-name">${displayName(s)}</div><div class="coin-symbol">${s}</div></div><div><div class="coin-price">${p==null?'Connecting…':fmt(p)}</div><div class="coin-change ${c>=0?'green':'red'}">${c==null?'':(c>=0?'+':'')+Number(c).toFixed(2)+'%'}</div></div>`;
+      $('watchlist').appendChild(row);
+    });
+    $('watchCount').textContent=config.watch.length+' assets';
+    $('btcPrice').textContent=prices.BTCUSDT==null?'—':fmt(prices.BTCUSDT);
+    $('btcChange').textContent=changes.BTCUSDT==null?'Waiting for stream':(changes.BTCUSDT>=0?'+':'')+changes.BTCUSDT.toFixed(2)+'% today';
+    $('btcChange').className=changes.BTCUSDT>=0?'green':'red';
+    $('ethPrice').textContent=prices.ETHUSDT==null?'—':fmt(prices.ETHUSDT);
+    $('ethChange').textContent=changes.ETHUSDT==null?'Waiting for stream':(changes.ETHUSDT>=0?'+':'')+changes.ETHUSDT.toFixed(2)+'% today';
+    $('ethChange').className=changes.ETHUSDT>=0?'green':'red';
+  }
+
+  function renderCharts(){
+    const host=$('charts');host.innerHTML='';
+    const charts=config.charts.filter(s=>config.watch.includes(s));
+    charts.forEach(s=>{
+      const card=document.createElement('article');card.className='chart-card';
+      const price=prices[s];
+      const head=document.createElement('div');head.className='chart-head';
+      head.innerHTML=`<div><div class="chart-title">${displayName(s)} <span style="color:var(--muted);font-weight:400;font-size:11px">${s}</span></div><div class="chart-price" id="p-${s}">${price==null?'Live price loading…':fmt(price)+' USDT'}</div></div><button data-remove="${s}" title="Remove chart" style="padding:4px 8px">×</button>`;
+      const frame=document.createElement('div');frame.className='chart-frame';
+      const iframe=document.createElement('iframe');iframe.loading='lazy';iframe.title=s+' TradingView chart';iframe.referrerPolicy='no-referrer-when-downgrade';
+      const params=new URLSearchParams({symbol:tvSymbol(s),interval:config.interval,theme:'dark',style:'1',locale:'en',toolbar_bg:'#111823',enable_publishing:'false',hide_top_toolbar:'false',hide_legend:'false',save_image:'false',allow_symbol_change:'true',calendar:'false',support_host:'https://www.tradingview.com'});
+      iframe.src='https://www.tradingview.com/widgetembed/?'+params.toString();
+      frame.appendChild(iframe);card.append(head,frame);host.appendChild(card);
+      head.querySelector('button').addEventListener('click',()=>{
+        config.charts=config.charts.filter(x=>x!==s);
+        save();renderCharts();updateCounts();
+      });
+    });
+    if(!charts.length){host.innerHTML='<div class="empty">No charts selected.<br>Choose “Manage charts” to add some.</div>'}
+    $('chartCount').textContent=charts.length+' charts';
+    document.documentElement.style.setProperty('--cols',config.cols);
+    document.documentElement.style.setProperty('--rows',Math.max(1,Math.ceil(charts.length/config.cols)));
+    $('layoutSelect').value=String(config.cols);
+    $('intervalSelect').value=config.interval;
+  }
+
+  function updateCounts(){ $('chartCount').textContent=config.charts.filter(s=>config.watch.includes(s)).length+' charts'; }
+
+  function connect(){
+    if(socket){
+      socket.onclose=null;
+      socket.onerror=null;
+      try{socket.close()}catch(e){}
+    }
+    clearTimeout(retryTimer);
+    $('wsStatus').textContent='Connecting to Binance…';$('wsDot').className='dot';
+    const streams=config.watch.map(s=>s.toLowerCase()+'@ticker').join('/');
+    if(!streams){$('wsStatus').textContent='No symbols';return}
+    try{socket=new WebSocket('wss://stream.binance.com:9443/stream?streams='+streams)}
+    catch(e){scheduleReconnect();return}
+    socket.onopen=()=>{$('wsStatus').textContent='Binance live';$('wsDot').className='dot ok'};
+    socket.onmessage=ev=>{
+      try{
+        const msg=JSON.parse(ev.data),d=msg.data||msg;
+        if(d.s){
+          prices[d.s]=Number(d.c);
+          changes[d.s]=Number(d.P);
+          renderWatch();
+          const el=$('p-'+d.s);
+          if(el) el.textContent=fmt(prices[d.s])+' USDT';
+        }
+      }catch(e){}
+    };
+    socket.onerror=()=>{$('wsStatus').textContent='Stream issue';$('wsDot').className='dot bad'};
+    socket.onclose=()=>{ $('wsStatus').textContent='Reconnecting…';$('wsDot').className='dot bad';scheduleReconnect()};
+  }
+
+  function scheduleReconnect(){clearTimeout(retryTimer);retryTimer=setTimeout(connect,4000)}
+
+  function openManage(){
+    modalDraft=config.charts.slice();
+    $('symbolChoices').innerHTML='';
+    config.watch.forEach(s=>{
+      const label=document.createElement('label');label.innerHTML=`<input type="checkbox" value="${s}" ${modalDraft.includes(s)?'checked':''}><span>${displayName(s)} <small style="color:var(--muted)">${s}</small></span>`;
+      $('symbolChoices').appendChild(label);
+    });
+    $('modal').classList.remove('hide');
+  }
+  function closeManage(){$('modal').classList.add('hide')}
+
+  $('manageBtn').onclick=openManage;$('manageBtn2').onclick=openManage;$('closeModal').onclick=closeManage;$('cancelModal').onclick=closeManage;
+  $('saveCharts').onclick=()=>{
+    config.charts=[...$('symbolChoices').querySelectorAll('input:checked')].map(x=>x.value);
+    save();closeManage();renderCharts();toast('Chart layout updated');
+  };
+  $('layoutSelect').onchange=e=>{config.cols=Number(e.target.value);save();renderCharts()};
+  $('intervalSelect').onchange=e=>{config.interval=e.target.value;save();renderCharts()};
+  $('addBtn').onclick=()=>{
+    const s=clean($('addSymbol').value);
+    if(!s||!s.endsWith('USDT')||s.length<6){toast('Enter a Binance pair like TAOUSDT');return}
+    if(config.watch.includes(s)){toast('Already in watchlist');return}
+    config.watch.push(s);config.charts.push(s);$('addSymbol').value='';
+    save();renderWatch();renderCharts();connect();openManage();toast('Added '+s+' — select charts as needed');
+  };
+  $('addSymbol').addEventListener('keydown',e=>{if(e.key==='Enter')$('addBtn').click()});
+  $('tvModeBtn').onclick=()=>{
+    document.body.classList.toggle('tv-mode');
+    const on=document.body.classList.contains('tv-mode');
+    $('tvModeBtn').textContent=on?'▣ Exit TV display mode':'▣ TV display mode';
+    if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
+    else if(!on&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  };
+  $('resetBtn').onclick=()=>{
+    if(confirm('Reset watchlist, charts and layout to defaults?')){
+      config={watch:defaults.slice(),charts:defaults.slice(0,6),interval:'15',cols:3,updatedAt:Date.now()};
+      prices={};changes={};save();renderWatch();renderCharts();connect();toast('Reset complete');
+    }
+  };
+  $('copyConfig').onclick=()=>{
+    const txt=JSON.stringify(config,null,2);
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>toast('Config copied')).catch(()=>prompt('Copy dashboard config:',txt));
+    else prompt('Copy dashboard config:',txt);
+  };
+
+  // Pairing Modal Logic
+  function openPairModal(){
+    $('syncDashId').value=syncConfig.dashboardId;
+    $('syncRoomKey').value=syncConfig.roomKey;
+    $('pairModal').classList.remove('hide');
+  }
+  function closePairModal(){$('pairModal').classList.add('hide')}
+  $('pairBtn').onclick=openPairModal;
+  $('closePairModal').onclick=closePairModal;
+  $('cancelPairModal').onclick=closePairModal;
+  $('toggleRoomKey').onclick=()=>{
+    const f=$('syncRoomKey');
+    f.type=f.type==='password'?'text':'password';
+  };
+  $('genRoomKey').onclick=()=>{
+    const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let key='';
+    const arr=new Uint8Array(28);
+    crypto.getRandomValues(arr);
+    arr.forEach(n=>key+=chars[n%chars.length]);
+    $('syncRoomKey').value='room_'+key;
+    $('syncRoomKey').type='text';
+    toast('Generated 33-char secure key');
+  };
+  $('copyPairUrl').onclick=()=>{
+    const room=$('syncDashId').value.trim()||syncConfig.dashboardId;
+    const key=$('syncRoomKey').value.trim()||syncConfig.roomKey;
+    if(!key||key.length<20){toast('Key must be at least 20 chars');return;}
+    const url=window.location.origin+window.location.pathname+'#room='+encodeURIComponent(room)+'&key='+encodeURIComponent(key);
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(()=>toast('Pairing URL copied!')).catch(()=>prompt('Copy Pairing URL:',url));
+    }else{
+      prompt('Copy Pairing URL:',url);
+    }
+  };
+  $('savePairModal').onclick=()=>{
+    const room=$('syncDashId').value.trim();
+    const key=$('syncRoomKey').value.trim();
+    if(room.length<3){toast('Dashboard ID must be at least 3 characters');return;}
+    if(key.length<20){toast('Room Key must be at least 20 characters');return;}
+    syncConfig.dashboardId=room;
+    syncConfig.roomKey=key;
+    try{
+      localStorage.setItem('cryptowall-dashboard-id',room);
+      localStorage.setItem('cryptowall-room-key',key);
+    }catch(e){}
+    closePairModal();
+    setupRealtimeSync();
+    toast('Saved pairing settings');
+  };
+
+  // Reconnection and Wake-up event handlers
+  window.addEventListener('online',()=>{
+    connect();
+    if(syncEnabled) pullRemoteConfig();
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){
+      connect();
+      if(syncEnabled) pullRemoteConfig();
+    }
+  });
+  window.addEventListener('beforeunload',()=>{if(socket)socket.close()});
+
+  renderWatch();
+  renderCharts();
+  connect();
+  setupRealtimeSync();
+})();
+</script>
+</body>
+</html>
