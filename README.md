@@ -6,7 +6,15 @@ Realtime multi-screen crypto trading dashboard designed for synchronized display
 
 ## Architecture & Features
 
-- **Binance WebSocket Feed:** Streamlines live tick-by-tick prices and 24h percentage changes directly from Binance public feeds (`wss://stream.binance.com:9443`).
+- **Binance WebSocket Feed (Futures & Spot):** Streamlines live tick-by-tick prices and 24h percentage changes directly from Binance public feeds (`wss://fstream.binance.com/ws` for USDⓈ-M Futures, `wss://stream.binance.com:9443` for Spot).
+- **Market Switcher (Futures ⇄ Spot):** Seamlessly switch between USDⓈ-M Perpetual Futures and Spot markets with automatic contract availability verification and clear fallback messaging for tokens without futures contracts.
+- **Sticky Live Price Ticker Tape:** Always-visible, fixed bottom marquee displaying dynamically updating live prices and 24h percentage changes across your watchlist without obscuring chart contents.
+- **Phone as Remote Control (Focus Mode):** Tap any token in the watchlist or click ⛶ Focus on any chart tile from your phone or TV to instantly expand it to a full-screen TradingView view across all synchronized screens.
+- **Regular Mode (Zero-Clipping First Fold):** Sized so that two full rows of charts sit 100% inside the first fold above the sticky ticker tape, ensuring the complete timeline (x-axis, volume bars, and toolbar controls) is visible without vertical scrolling.
+- **TV Display Mode (Auto-Fit & 3×3 Pagination):**
+  - Fullscreen 100vh edge-to-edge layout with zero vertical scrolling.
+  - Automatically sizes up to 9 charts per screen in an optimized grid (1×1, 2×1, 3×1, 2×2, 3×2, 3×3).
+  - Multi-page pagination when more than 9 charts are selected, with Prev/Next buttons, active page dots, empty slot visual consistency, and TV remote/keyboard arrow key navigation (`←` / `→`, `PageUp` / `PageDown`).
 - **Interactive TradingView Embeds:** Dynamically loaded dark-mode candlestick charts supporting custom intervals (`1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1D`, `1W`).
 - **Real-Time Device Synchronization:**
   - **Supabase Realtime Broadcast:** Delivers millisecond-level state sync across open browsers.
@@ -17,7 +25,6 @@ Realtime multi-screen crypto trading dashboard designed for synchronized display
   - Keeps the Supabase publishable/anon key in `supabase-config.js` (safe for client-side code).
   - Keeps the private **Room Key** out of public GitHub code by supporting URL hash parameter pairing (`#key=...&room=...`) and persistent browser `localStorage`.
   - Built-in Pairing & Key Generator modal with 1-click pairing link generator.
-- **TV Display Mode:** Fullscreen, edge-to-edge layout optimized for Android TV remote navigation and large screens.
 
 ---
 
