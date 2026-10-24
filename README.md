@@ -9,12 +9,17 @@ Realtime multi-screen crypto trading dashboard designed for synchronized display
 - **Binance WebSocket Feed (Futures & Spot):** Streamlines live tick-by-tick prices and 24h percentage changes directly from Binance public feeds (`wss://fstream.binance.com/ws` for USDⓈ-M Futures, `wss://stream.binance.com:9443` for Spot).
 - **Market Switcher (Futures ⇄ Spot):** Seamlessly switch between USDⓈ-M Perpetual Futures and Spot markets with automatic contract availability verification and clear fallback messaging for tokens without futures contracts.
 - **Sticky Live Price Ticker Tape:** Always-visible, fixed bottom marquee displaying dynamically updating live prices and 24h percentage changes across your watchlist without obscuring chart contents.
-- **Phone as Remote Control (Focus Mode):** Tap any token in the watchlist or click ⛶ Focus on any chart tile from your phone or TV to instantly expand it to a full-screen TradingView view across all synchronized screens.
+- **Drag & Drop and Button Reordering:**
+  - **Watchlist:** Drag items up and down using handles or click `▲` / `▼` buttons to reorder tokens. Order synchronizes immediately across paired devices and the live ticker tape.
+  - **Chart Grid:** Drag charts or use `◀` / `▶` buttons in chart headers to rearrange grid order with zero iframe reloading.
+- **Config Import / Paste Modal:** Easily import full JSON configurations or paste lists of token symbols (comma, space, or newline-separated like `BTC, ETH, SOL, XRP, TAO`) in either **Replace** or **Merge** mode.
+- **Phone as Remote Control (Focus Mode):** Tap any token in the watchlist or click ⛶ Focus on any chart tile from your phone or TV to instantly expand it to a full-screen TradingView view across all synchronized screens. In TV Display mode, the focused chart expands to occupy 100% of the available display space.
 - **Regular Mode (Zero-Clipping First Fold):** Sized so that two full rows of charts sit 100% inside the first fold above the sticky ticker tape, ensuring the complete timeline (x-axis, volume bars, and toolbar controls) is visible without vertical scrolling.
 - **TV Display Mode (Auto-Fit & 3×3 Pagination):**
   - Fullscreen 100vh edge-to-edge layout with zero vertical scrolling.
   - Automatically sizes up to 9 charts per screen in an optimized grid (1×1, 2×1, 3×1, 2×2, 3×2, 3×3).
   - Multi-page pagination when more than 9 charts are selected, with Prev/Next buttons, active page dots, empty slot visual consistency, and TV remote/keyboard arrow key navigation (`←` / `→`, `PageUp` / `PageDown`).
+  - When in Focus Mode, expands the single focused chart to 100% width and height of the view with automatic navigation bar suppression.
 - **Interactive TradingView Embeds:** Dynamically loaded dark-mode candlestick charts supporting custom intervals (`1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1D`, `1W`).
 - **Real-Time Device Synchronization:**
   - **Supabase Realtime Broadcast:** Delivers millisecond-level state sync across open browsers.

@@ -229,13 +229,24 @@ select,input{background:#0b111a;color:var(--text);border:1px solid var(--line);b
   display:grid;
   grid-template-columns:minmax(0,1fr) auto;
   gap:8px;
-  padding:7px 10px;
+  padding:6px 8px;
   border-bottom:1px solid #1c2736;
   cursor:pointer;
   transition:all .15s ease;
   user-select:none;
 }
 .coin:hover{background:#162232}
+.coin.is-dragging{opacity:0.35;background:#1e324a!important}
+.coin.drag-over{border-top:2px solid var(--accent)!important;background:#142233!important}
+.coin-reorder-btns{display:flex;flex-direction:column;gap:2px;margin-right:2px}
+.coin-move-btn{background:transparent;border:1px solid #233448;color:var(--muted);border-radius:3px;padding:0 3px;font-size:7px;line-height:9px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.coin-move-btn:hover{border-color:var(--accent);color:var(--accent);background:#1b2a3b}
+.coin-drag-handle{color:#3a4e66;cursor:grab;font-size:11px;letter-spacing:-1px;user-select:none;padding:0 2px}
+.coin:hover .coin-drag-handle{color:var(--accent)}
+.chart-card.is-dragging{opacity:0.35}
+.chart-card.drag-over{outline:2px dashed var(--accent)!important;outline-offset:-2px}
+.chart-move-btn{background:#182535;border:1px solid #2a3d54;color:var(--muted);border-radius:4px;padding:2px 5px;font-size:10px;cursor:pointer;line-height:1}
+.chart-move-btn:hover{border-color:var(--accent);color:var(--accent);background:#22354a}
 .coin.is-focused{
   background:#192a3e;
   border-left:3px solid var(--accent);
@@ -501,9 +512,18 @@ body.tv-mode .chart-head{
   padding:3px 8px;
   font-size:12px;
 }
+body.tv-mode.has-focus .charts,
+body.tv-mode:has(.focus-card) .charts{
+  grid-template-columns:1fr!important;
+  grid-template-rows:1fr!important;
+}
 body.tv-mode .focus-card{
+  width:100%!important;
   height:100%!important;
   min-height:0!important;
+  max-height:none!important;
+  grid-column:1 / -1;
+  grid-row:1 / -1;
 }
 body.tv-mode .focus-frame{
   flex:1;
@@ -641,6 +661,7 @@ body.tv-mode .tv-page-nav{
           <p style="margin:0;color:var(--muted);font-size:12px">Changes on your phone sync instantly to your TV in real-time via Supabase.</p>
           <div class="watch-actions">
             <button id="copyConfig">Copy config</button>
+            <button id="importConfigBtn">📥 Import config</button>
             <button id="pairBtn" class="primary">🔗 Pairing &amp; Keys</button>
           </div>
         </div>
@@ -667,6 +688,24 @@ body.tv-mode .tv-page-nav{
     <p>Select which symbols appear as chart tiles. Your watchlist can contain additional symbols.</p>
     <div id="symbolChoices" class="symbols"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button id="cancelModal">Cancel</button><button id="saveCharts" class="primary">Apply changes</button></div>
+  </div>
+</div>
+
+<div id="importModal" class="modal hide">
+  <div class="modal-box">
+    <div class="modal-head"><strong>Import / Paste Configuration</strong><button id="closeImportModal">✕</button></div>
+    <p>Paste a full JSON config or a simple list of tokens (comma, space, or newline-separated like <code>BTC, ETH, SOL, XRP, TAO</code>).</p>
+    <div style="margin:12px 0">
+      <textarea id="importText" rows="6" style="width:100%;box-sizing:border-box;background:#0b111a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:monospace;font-size:12px;resize:vertical" placeholder='Paste JSON config or token symbols:&#10;e.g. BTC, ETH, SOL, XRP, BNB, TAO, DOGE, SUI'></textarea>
+    </div>
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:14px;font-size:12px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="importMode" value="replace" checked> Replace current</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="importMode" value="merge"> Merge / Append</label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="cancelImportModal">Cancel</button>
+      <button id="applyImportBtn" class="primary">Apply &amp; Sync</button>
+    </div>
   </div>
 </div>
 <div id="pairModal" class="modal hide">
@@ -713,13 +752,39 @@ body.tv-mode .tv-page-nav{
     updatedAt:Date.now()
   };
 
+  let hasLocalCustomConfig = false;
+  let hasPulledInitialState = false;
+  let draggedChartSym = null;
+  let draggedWatchSym = null;
+
   try{
     const saved=JSON.parse(localStorage.getItem('cryptowall-config')||'null');
     if(saved&&Array.isArray(saved.watch)&&Array.isArray(saved.charts)){
       config={...config,...saved};
       if(!config.market) config.market='futures';
+      hasLocalCustomConfig = true;
     }
   }catch(e){}
+
+  function isConfigSemanticallyEqual(a, b){
+    if(!a || !b) return false;
+    if(a.market !== b.market) return false;
+    if(String(a.interval) !== String(b.interval)) return false;
+    if(String(a.cols) !== String(b.cols)) return false;
+    if(String(a.scale) !== String(b.scale)) return false;
+    if((a.focusChart || null) !== (b.focusChart || null)) return false;
+    if(!Array.isArray(a.watch) || !Array.isArray(b.watch)) return false;
+    if(a.watch.length !== b.watch.length) return false;
+    for(let i=0; i<a.watch.length; i++){
+      if(a.watch[i] !== b.watch[i]) return false;
+    }
+    if(!Array.isArray(a.charts) || !Array.isArray(b.charts)) return false;
+    if(a.charts.length !== b.charts.length) return false;
+    for(let i=0; i<a.charts.length; i++){
+      if(a.charts[i] !== b.charts[i]) return false;
+    }
+    return true;
+  }
 
   let prices={},changes={},socket=null,retryTimer=null,modalDraft=[];
   let supabaseClient=null, syncChannel=null, syncEnabled=false, applyingRemote=false, pushTimer=null;
@@ -795,6 +860,7 @@ body.tv-mode .tv-page-nav{
 
   function save(){
     config.updatedAt=Date.now();
+    hasLocalCustomConfig=true;
     try{localStorage.setItem('cryptowall-config',JSON.stringify(config))}catch(e){}
     if(syncEnabled&&!applyingRemote){
       clearTimeout(pushTimer);
@@ -813,6 +879,8 @@ body.tv-mode .tv-page-nav{
 
   async function pushRemoteConfig(){
     if(!syncEnabled||!supabaseClient)return;
+    // Prevent unedited default template from overwriting an existing remote room
+    if(!hasLocalCustomConfig && !hasPulledInitialState) return;
     config.updatedAt=Date.now();
     try{
       const {error}=await supabaseClient.rpc('save_dashboard_state',{
@@ -840,18 +908,25 @@ body.tv-mode .tv-page-nav{
     }
   }
 
-  async function applyRemoteConfig(next){
+  async function applyRemoteConfig(next, isInitialHydration=false){
     if(!next||!Array.isArray(next.watch)||!Array.isArray(next.charts))return;
-    if(next.updatedAt&&config.updatedAt&&next.updatedAt<config.updatedAt){
-      console.log('Ignored older remote update');
-      return;
+    // If device has local custom edits and this is not initial room hydration, enforce timestamp ordering
+    if(hasLocalCustomConfig && !isInitialHydration){
+      if(next.updatedAt&&config.updatedAt&&next.updatedAt<config.updatedAt){
+        console.log('Ignored older remote update');
+        return;
+      }
     }
-    const changed=JSON.stringify(config)!==JSON.stringify(next);
-    if(!changed)return;
+    // Check semantic equality - do nothing if no meaningful property changed
+    if(isConfigSemanticallyEqual(config, next)) return;
     applyingRemote=true;
+    hasLocalCustomConfig=true;
     try{
       const prevFocus=config.focusChart;
       const prevMarket=config.market;
+      const prevInterval=config.interval;
+      const prevCharts=[...config.charts];
+
       config={
         ...config,
         ...next,
@@ -866,7 +941,14 @@ body.tv-mode .tv-page-nav{
       if($('marketSelect')) $('marketSelect').value=config.market;
       updateMarketHeaderUI();
       renderWatch();
-      renderCharts();
+
+      const chartsChanged = config.market!==prevMarket ||
+                            config.interval!==prevInterval ||
+                            config.focusChart!==prevFocus ||
+                            JSON.stringify(config.charts)!==JSON.stringify(prevCharts);
+      if(chartsChanged){
+        renderCharts();
+      }
       renderTickerTape();
       if(config.market!==prevMarket){
         prices={};changes={};
@@ -886,15 +968,16 @@ body.tv-mode .tv-page-nav{
     }
   }
 
-  async function pullRemoteConfig(){
+  async function pullRemoteConfig(isInitial=false){
     if(!syncEnabled||!supabaseClient)return;
     try{
       const {data,error}=await supabaseClient.rpc('get_dashboard_state',{
         p_dashboard_id:syncConfig.dashboardId,
         p_room_key:syncConfig.roomKey
       });
+      hasPulledInitialState=true;
       if(error){console.warn('Pull remote config error:',error);return;}
-      if(data&&data.config) await applyRemoteConfig(data.config);
+      if(data&&data.config) await applyRemoteConfig(data.config, isInitial);
     }catch(err){
       console.warn('Pull remote exception:',err);
     }
@@ -925,13 +1008,14 @@ body.tv-mode .tv-page-nav{
         p_dashboard_id:syncConfig.dashboardId,
         p_room_key:syncConfig.roomKey
       });
+      hasPulledInitialState=true;
       if(error){
         setSyncStatus('Sync setup error: '+(error.message||'check keys'),'bad');
         console.error('Load sync error:',error);
         syncEnabled=false;
         return;
       }
-      if(initial&&initial.config) await applyRemoteConfig(initial.config);
+      if(initial&&initial.config) await applyRemoteConfig(initial.config, true);
 
       if(syncChannel){
         try{supabaseClient.removeChannel(syncChannel)}catch(e){}
@@ -940,16 +1024,18 @@ body.tv-mode .tv-page-nav{
       syncChannel.on('broadcast',{event:'dashboard-update'},({payload})=>{
         if(!payload)return;
         if(payload.source===syncConfig.clientId)return;
-        if(payload.config) applyRemoteConfig(payload.config);
+        if(payload.config) applyRemoteConfig(payload.config, false);
       }).subscribe(status=>{
         if(status==='SUBSCRIBED'){
           setSyncStatus('Realtime connected','ok');
-          pullRemoteConfig();
+          pullRemoteConfig(false);
         }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
           setSyncStatus('Realtime disconnected','bad');
         }
       });
-      if(!initial||!initial.config) await pushRemoteConfig();
+      if(!initial||!initial.config){
+        if(hasLocalCustomConfig) await pushRemoteConfig();
+      }
     }catch(e){
       setSyncStatus('Sync init error','bad');
       console.error('Setup error:',e);
@@ -1003,27 +1089,37 @@ body.tv-mode .tv-page-nav{
   }
 
   function renderWatch(){
-    $('watchlist').innerHTML='';
-    config.watch.forEach(s=>{
+    const host=$('watchlist');
+    host.innerHTML='';
+    config.watch.forEach((s, idx)=>{
       const p=prices[s],c=changes[s];
       const isFocused=config.focusChart===s;
       const isAvail=isSymbolAvailable(s);
       const row=document.createElement('div');
       row.className='coin'+(isFocused?' is-focused':'');
-      row.title=isFocused?'Currently focused on TV & screen (Click to return to grid)':('Click to focus '+displayName(s)+' on TV');
+      row.dataset.sym=s;
+      row.draggable=true;
+      row.title=isFocused?'Currently focused on TV & screen (Click to return to grid)':('Click to focus '+displayName(s)+' on TV — drag to reorder');
       
       let priceDisplay = p==null ? (isAvail ? 'Connecting…' : '<span class="badge-unavail">No Futures Pair</span>') : fmt(p);
       let changeDisplay = c==null ? '' : ((c>=0?'+':'')+Number(c).toFixed(2)+'%');
 
       row.innerHTML=`
-        <div>
-          <div class="coin-name">
-            ${displayName(s)}
-            ${isFocused?'<span class="coin-tv-tag">ON TV</span>':''}
+        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+          <div class="coin-reorder-btns">
+            <button class="coin-move-btn" data-move-up="${s}" title="Move Up">▲</button>
+            <button class="coin-move-btn" data-move-down="${s}" title="Move Down">▼</button>
           </div>
-          <div class="coin-symbol">${s} ${config.market==='futures'?'Perp':''}</div>
+          <div class="coin-drag-handle" title="Drag to reorder">⋮⋮</div>
+          <div style="min-width:0;overflow:hidden">
+            <div class="coin-name">
+              ${displayName(s)}
+              ${isFocused?'<span class="coin-tv-tag">ON TV</span>':''}
+            </div>
+            <div class="coin-symbol">${s} ${config.market==='futures'?'Perp':''}</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <div>
             <div class="coin-price" id="watch-p-${s}">${priceDisplay}</div>
             <div class="coin-change ${c>=0?'green':'red'}" id="watch-c-${s}">${changeDisplay}</div>
@@ -1032,7 +1128,7 @@ body.tv-mode .tv-page-nav{
         </div>`;
       
       row.addEventListener('click',(e)=>{
-        if(e.target.closest('.coin-del'))return;
+        if(e.target.closest('.coin-del') || e.target.closest('.coin-move-btn') || e.target.closest('.coin-drag-handle')) return;
         if(config.focusChart===s){
           config.focusChart=null;
           toast('Returned to Grid View');
@@ -1046,11 +1142,73 @@ body.tv-mode .tv-page-nav{
         renderTickerTape();
       });
 
+      row.querySelector('[data-move-up]').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        const i=config.watch.indexOf(s);
+        if(i>0){
+          config.watch.splice(i,1);
+          config.watch.splice(i-1,0,s);
+          save();
+          renderWatch();
+          renderTickerTape();
+        }
+      });
+
+      row.querySelector('[data-move-down]').addEventListener('click',(e)=>{
+        e.stopPropagation();
+        const i=config.watch.indexOf(s);
+        if(i!==-1 && i<config.watch.length-1){
+          config.watch.splice(i,1);
+          config.watch.splice(i+1,0,s);
+          save();
+          renderWatch();
+          renderTickerTape();
+        }
+      });
+
       row.querySelector('.coin-del').addEventListener('click',(e)=>{
         e.stopPropagation();
         removeSymbol(s);
       });
-      $('watchlist').appendChild(row);
+
+      // Drag and drop for watchlist rows
+      row.addEventListener('dragstart',(e)=>{
+        draggedWatchSym=s;
+        row.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed='move';
+        e.dataTransfer.setData('text/plain',s);
+      });
+      row.addEventListener('dragend',()=>{
+        row.classList.remove('is-dragging');
+        draggedWatchSym=null;
+        host.querySelectorAll('.coin').forEach(c=>c.classList.remove('drag-over'));
+      });
+      row.addEventListener('dragover',(e)=>{
+        e.preventDefault();
+        e.dataTransfer.dropEffect='move';
+        row.classList.add('drag-over');
+      });
+      row.addEventListener('dragleave',()=>{
+        row.classList.remove('drag-over');
+      });
+      row.addEventListener('drop',(e)=>{
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        if(draggedWatchSym && draggedWatchSym!==s){
+          const fromIdx=config.watch.indexOf(draggedWatchSym);
+          const toIdx=config.watch.indexOf(s);
+          if(fromIdx!==-1 && toIdx!==-1){
+            config.watch.splice(fromIdx,1);
+            config.watch.splice(toIdx,0,draggedWatchSym);
+            save();
+            renderWatch();
+            renderTickerTape();
+            toast('Reordered '+displayName(draggedWatchSym));
+          }
+        }
+      });
+
+      host.appendChild(row);
     });
 
     $('watchCount').textContent=config.watch.length+' assets';
@@ -1059,12 +1217,14 @@ body.tv-mode .tv-page-nav{
 
   function renderCharts(){
     const host=$('charts');
-    host.innerHTML='';
     const gridBtn=$('gridBtn');
+    const isTvMode=document.body.classList.contains('tv-mode');
 
     // FOCUS VIEW: Full-Screen Remote Control Expansion
     if(config.focusChart && config.watch.includes(config.focusChart)){
       if(gridBtn) gridBtn.classList.remove('hide');
+      document.body.classList.add('has-focus');
+      host.innerHTML='';
       const s=config.focusChart;
       const price=prices[s];
       const chg=changes[s];
@@ -1145,27 +1305,32 @@ body.tv-mode .tv-page-nav{
       $('chartCount').textContent='1 expanded (Focus Mode)';
       document.documentElement.style.setProperty('--cols',1);
       document.documentElement.style.setProperty('--rows',1);
+      document.documentElement.style.setProperty('--tv-cols',1);
+      document.documentElement.style.setProperty('--tv-rows',1);
+      updateTvPageNav(1, isTvMode);
       return;
     }
 
     // MULTI-CHART GRID VIEW
+    document.body.classList.remove('has-focus');
     if(gridBtn) gridBtn.classList.add('hide');
     const charts=config.charts.filter(s=>config.watch.includes(s));
-    const isTvMode=document.body.classList.contains('tv-mode');
+
+    // Remove focus-card if returning from focus
+    const oldFocusCard = host.querySelector('.focus-card');
+    if(oldFocusCard) oldFocusCard.remove();
 
     // Determine which charts to render on this frame
     let chartsToRender=charts;
     let tvCols=3, tvRows=3, totalPages=1;
 
     if(isTvMode && !config.focusChart){
-      // TV Mode Pagination: max 9 per page in 3×3
       totalPages=Math.max(1,Math.ceil(charts.length/TV_MAX_PER_PAGE));
       if(tvCurrentPage>=totalPages) tvCurrentPage=totalPages-1;
       if(tvCurrentPage<0) tvCurrentPage=0;
       const start=tvCurrentPage*TV_MAX_PER_PAGE;
       chartsToRender=charts.slice(start,start+TV_MAX_PER_PAGE);
 
-      // Dynamic grid sizing based on page chart count (maintain 3×3 slot sizing for consistency)
       const n=chartsToRender.length;
       if(n<=1){tvCols=1;tvRows=1;}
       else if(n<=2){tvCols=2;tvRows=1;}
@@ -1174,68 +1339,165 @@ body.tv-mode .tv-page-nav{
       else if(n<=6){tvCols=3;tvRows=2;}
       else{tvCols=3;tvRows=3;}
 
-      // For visual consistency: always use 3×3 slot sizing when totalPages > 1
       if(totalPages>1){tvCols=3;tvRows=3;}
 
       document.documentElement.style.setProperty('--tv-cols',tvCols);
       document.documentElement.style.setProperty('--tv-rows',tvRows);
     }
 
-    // Render chart cards
+    // Clean up empty slots from previous frame
+    host.querySelectorAll('.chart-card.empty-slot').forEach(e => e.remove());
+    // Remove cards not in chartsToRender
+    const renderSet = new Set(chartsToRender);
+    host.querySelectorAll('.chart-card:not(.empty-slot)').forEach(card => {
+      const sym = card.dataset.sym;
+      if(!renderSet.has(sym)){
+        card.remove();
+      }
+    });
+
+    // Render / reorder chart cards
     chartsToRender.forEach(s=>{
-      const card=document.createElement('article');card.className='chart-card';
+      let card = host.querySelector(`.chart-card[data-sym="${s}"]`);
       const price=prices[s];
       const isAvail=isSymbolAvailable(s);
-      const head=document.createElement('div');head.className='chart-head';
-      head.innerHTML=`
-        <div>
-          <div class="chart-title">${displayName(s)} <span style="color:var(--muted);font-weight:400;font-size:11px">${s} ${config.market==='futures'?'PERP':''}</span></div>
-          <div class="chart-price" id="p-${s}">${price==null?(isAvail?'Live price loading…':'<span class="badge-unavail">No Futures Pair</span>'):fmt(price)+' USDT'}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:5px">
-          <button class="focus-tile-btn" data-focus="${s}" title="Expand ${displayName(s)} on TV & screen" style="padding:3px 7px;font-size:11px;background:#24364c;border-color:#3b5677">⛶ Focus</button>
-          <button data-remove="${s}" title="Remove chart" style="padding:3px 7px">×</button>
-        </div>`;
-      
-      const frame=document.createElement('div');frame.className='chart-frame';
-      if(!isAvail){
-        frame.innerHTML=`<div class="empty">⚠️ ${s} has no Binance Futures contract.<br><small style="color:var(--muted)">Switch Market to Spot to view.</small></div>`;
-      }else{
-        const iframe=document.createElement('iframe');iframe.loading='lazy';iframe.title=s+' TradingView chart';iframe.referrerPolicy='no-referrer-when-downgrade';
-        const params=new URLSearchParams({
-          symbol:tvSymbol(s),
-          interval:config.interval,
-          theme:'dark',
-          style:'1',
-          locale:'en',
-          toolbar_bg:'#111823',
-          enable_publishing:'false',
-          hide_top_toolbar:'false',
-          hide_side_toolbar:'true',
-          hide_legend:'false',
-          save_image:'false',
-          allow_symbol_change:'true',
-          calendar:'false',
-          support_host:'https://www.tradingview.com'
-        });
-        iframe.src='https://www.tradingview.com/widgetembed/?'+params.toString();
-        frame.appendChild(iframe);
-      }
-      card.append(head,frame);
-      host.appendChild(card);
 
-      head.querySelector('.focus-tile-btn').addEventListener('click',()=>{
-        config.focusChart=s;
-        save();
-        renderCharts();
-        renderWatch();
-        renderTickerTape();
-        toast('Focused '+displayName(s)+' on TV');
+      const params=new URLSearchParams({
+        symbol:tvSymbol(s),
+        interval:config.interval,
+        theme:'dark',
+        style:'1',
+        locale:'en',
+        toolbar_bg:'#111823',
+        enable_publishing:'false',
+        hide_top_toolbar:'false',
+        hide_side_toolbar:'true',
+        hide_legend:'false',
+        save_image:'false',
+        allow_symbol_change:'true',
+        calendar:'false',
+        support_host:'https://www.tradingview.com'
       });
-      head.querySelector('button[data-remove]').addEventListener('click',()=>{
-        config.charts=config.charts.filter(x=>x!==s);
-        save();renderCharts();updateCounts();
-      });
+      const expectedSrc='https://www.tradingview.com/widgetembed/?'+params.toString();
+
+      if(card){
+        // Existing card in DOM: update price
+        const pEl = card.querySelector(`#p-${s}`);
+        if(pEl) pEl.innerHTML = price==null?(isAvail?'Live price loading…':'<span class="badge-unavail">No Futures Pair</span>'):fmt(price)+' USDT';
+
+        const existingIframe = card.querySelector('iframe');
+        if(!isAvail && existingIframe){
+          card.querySelector('.chart-frame').innerHTML=`<div class="empty">⚠️ ${s} has no Binance Futures contract.<br><small style="color:var(--muted)">Switch Market to Spot to view.</small></div>`;
+        }else if(isAvail && (!existingIframe || existingIframe.src !== expectedSrc)){
+          const iframe=document.createElement('iframe');
+          iframe.loading='eager';
+          iframe.title=s+' TradingView chart';
+          iframe.referrerPolicy='no-referrer-when-downgrade';
+          iframe.src=expectedSrc;
+          const frame = card.querySelector('.chart-frame');
+          frame.innerHTML='';
+          frame.appendChild(iframe);
+        }
+        // Move to current order position in DOM without reloading iframe
+        host.appendChild(card);
+      } else {
+        // Create new card
+        card=document.createElement('article');
+        card.className='chart-card';
+        card.dataset.sym=s;
+        card.draggable=true;
+
+        const head=document.createElement('div');
+        head.className='chart-head';
+        head.innerHTML=`
+          <div>
+            <div class="chart-title">${displayName(s)} <span style="color:var(--muted);font-weight:400;font-size:11px">${s} ${config.market==='futures'?'PERP':''}</span></div>
+            <div class="chart-price" id="p-${s}">${price==null?(isAvail?'Live price loading…':'<span class="badge-unavail">No Futures Pair</span>'):fmt(price)+' USDT'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button class="chart-move-btn" data-chart-left="${s}" title="Move chart left">◀</button>
+            <button class="chart-move-btn" data-chart-right="${s}" title="Move chart right">▶</button>
+            <button class="focus-tile-btn" data-focus="${s}" title="Expand ${displayName(s)} on TV & screen" style="padding:3px 7px;font-size:11px;background:#24364c;border-color:#3b5677">⛶ Focus</button>
+            <button data-remove="${s}" title="Remove chart" style="padding:3px 7px">×</button>
+          </div>`;
+        
+        const frame=document.createElement('div');
+        frame.className='chart-frame';
+        if(!isAvail){
+          frame.innerHTML=`<div class="empty">⚠️ ${s} has no Binance Futures contract.<br><small style="color:var(--muted)">Switch Market to Spot to view.</small></div>`;
+        }else{
+          const iframe=document.createElement('iframe');
+          iframe.loading='eager';
+          iframe.title=s+' TradingView chart';
+          iframe.referrerPolicy='no-referrer-when-downgrade';
+          iframe.src=expectedSrc;
+          frame.appendChild(iframe);
+        }
+        card.append(head,frame);
+        host.appendChild(card);
+
+        // Bind events
+        head.querySelector('[data-chart-left]').addEventListener('click',()=>{
+          const i=config.charts.indexOf(s);
+          if(i>0){
+            config.charts.splice(i,1);
+            config.charts.splice(i-1,0,s);
+            save();renderCharts();
+          }
+        });
+        head.querySelector('[data-chart-right]').addEventListener('click',()=>{
+          const i=config.charts.indexOf(s);
+          if(i!==-1 && i<config.charts.length-1){
+            config.charts.splice(i,1);
+            config.charts.splice(i+1,0,s);
+            save();renderCharts();
+          }
+        });
+        head.querySelector('.focus-tile-btn').addEventListener('click',()=>{
+          config.focusChart=s;
+          save();renderCharts();renderWatch();renderTickerTape();
+          toast('Focused '+displayName(s)+' on TV');
+        });
+        head.querySelector('button[data-remove]').addEventListener('click',()=>{
+          config.charts=config.charts.filter(x=>x!==s);
+          save();renderCharts();updateCounts();
+        });
+
+        // Drag and drop for chart cards
+        card.addEventListener('dragstart',(e)=>{
+          draggedChartSym=s;
+          card.classList.add('is-dragging');
+          e.dataTransfer.effectAllowed='move';
+          e.dataTransfer.setData('text/plain',s);
+        });
+        card.addEventListener('dragend',()=>{
+          card.classList.remove('is-dragging');
+          draggedChartSym=null;
+          host.querySelectorAll('.chart-card').forEach(c=>c.classList.remove('drag-over'));
+        });
+        card.addEventListener('dragover',(e)=>{
+          e.preventDefault();
+          e.dataTransfer.dropEffect='move';
+          card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave',()=>{
+          card.classList.remove('drag-over');
+        });
+        card.addEventListener('drop',(e)=>{
+          e.preventDefault();
+          card.classList.remove('drag-over');
+          if(draggedChartSym && draggedChartSym!==s){
+            const fromIdx=config.charts.indexOf(draggedChartSym);
+            const toIdx=config.charts.indexOf(s);
+            if(fromIdx!==-1 && toIdx!==-1){
+              config.charts.splice(fromIdx,1);
+              config.charts.splice(toIdx,0,draggedChartSym);
+              save();renderCharts();
+              toast('Reordered '+displayName(draggedChartSym));
+            }
+          }
+        });
+      }
     });
 
     // TV Mode: fill empty slots for 3×3 visual consistency
@@ -1398,7 +1660,10 @@ body.tv-mode .tv-page-nav{
     }
   }
 
-  function connect(){
+  function connect(force=false){
+    if(!force && socket && socket.readyState===WebSocket.OPEN){
+      return;
+    }
     if(socket){
       socket.onclose=null;
       socket.onerror=null;
@@ -1448,7 +1713,7 @@ body.tv-mode .tv-page-nav{
     };
   }
 
-  function scheduleReconnect(){clearTimeout(retryTimer);retryTimer=setTimeout(connect,4000)}
+  function scheduleReconnect(){clearTimeout(retryTimer);retryTimer=setTimeout(()=>connect(true),4000)}
 
   function openManage(){
     modalDraft=config.charts.slice();
@@ -1480,7 +1745,14 @@ body.tv-mode .tv-page-nav{
 
   $('manageBtn').onclick=openManage;$('manageBtn2').onclick=openManage;$('closeModal').onclick=closeManage;$('cancelModal').onclick=closeManage;
   $('saveCharts').onclick=()=>{
-    config.charts=[...$('symbolChoices').querySelectorAll('input:checked')].map(x=>x.value);
+    const checked = new Set([...$('symbolChoices').querySelectorAll('input:checked')].map(x=>x.value));
+    const updatedCharts = config.charts.filter(s => checked.has(s));
+    config.watch.forEach(s => {
+      if(checked.has(s) && !updatedCharts.includes(s)){
+        updatedCharts.push(s);
+      }
+    });
+    config.charts = updatedCharts;
     save();closeManage();renderCharts();toast('Chart layout updated');
   };
   $('layoutSelect').onchange=e=>{config.cols=Number(e.target.value);save();renderCharts()};
@@ -1713,6 +1985,110 @@ body.tv-mode .tv-page-nav{
     const txt=JSON.stringify(config,null,2);
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>toast('Config copied')).catch(()=>prompt('Copy dashboard config:',txt));
     else prompt('Copy dashboard config:',txt);
+  };
+
+  // Import / Paste Configuration Modal Logic
+  function openImportModal(){
+    $('importText').value='';
+    $('importModal').classList.remove('hide');
+    setTimeout(()=>$('importText').focus(), 50);
+  }
+  function closeImportModal(){$('importModal').classList.add('hide')}
+  $('importConfigBtn').onclick=openImportModal;
+  $('closeImportModal').onclick=closeImportModal;
+  $('cancelImportModal').onclick=closeImportModal;
+
+  function parseTokenList(text){
+    const parts = text.split(/[\s,;\n\r\t]+/).map(t=>t.trim()).filter(Boolean);
+    const symbols = [];
+    parts.forEach(p=>{
+      let s = clean(p);
+      if(!s) return;
+      if(s.endsWith('PERP')) s=s.slice(0,-4);
+      if(!s.endsWith('USDT')) s=s+'USDT';
+      if(s.length>=6 && !symbols.includes(s)){
+        symbols.push(s);
+      }
+    });
+    return symbols;
+  }
+
+  $('applyImportBtn').onclick=()=>{
+    const raw=$('importText').value.trim();
+    if(!raw){toast('Please paste config JSON or token list');return}
+    const mode=[...document.querySelectorAll('input[name="importMode"]')].find(r=>r.checked)?.value||'replace';
+
+    let importedConfig = null;
+    let importedTokens = [];
+
+    if(raw.startsWith('{') || raw.startsWith('[')){
+      try{
+        const parsed = JSON.parse(raw);
+        if(parsed && typeof parsed==='object' && !Array.isArray(parsed)){
+          importedConfig = parsed;
+        }else if(Array.isArray(parsed)){
+          importedTokens = parsed.map(p=>{
+            let s=clean(p);
+            if(!s) return null;
+            if(s.endsWith('PERP')) s=s.slice(0,-4);
+            if(!s.endsWith('USDT')) s=s+'USDT';
+            return s;
+          }).filter(Boolean);
+        }
+      }catch(err){}
+    }
+
+    if(!importedConfig && !importedTokens.length){
+      importedTokens = parseTokenList(raw);
+    }
+
+    if(!importedConfig && (!importedTokens || !importedTokens.length)){
+      toast('Could not find any valid tokens or config');
+      return;
+    }
+
+    if(importedConfig){
+      const nextWatch = Array.isArray(importedConfig.watch) ? importedConfig.watch.map(clean).map(s=>s.endsWith('USDT')?s:s+'USDT') : [];
+      const nextCharts = Array.isArray(importedConfig.charts) ? importedConfig.charts.map(clean).map(s=>s.endsWith('USDT')?s:s+'USDT') : [];
+
+      if(mode==='replace'){
+        if(nextWatch.length) config.watch = nextWatch;
+        config.charts = nextCharts.length ? nextCharts : (nextWatch.length ? nextWatch.slice(0,6) : config.charts);
+        if(importedConfig.interval) config.interval = String(importedConfig.interval);
+        if(importedConfig.cols) config.cols = Number(importedConfig.cols);
+        if(importedConfig.scale) {
+          config.scale = String(importedConfig.scale);
+          applyScale(config.scale);
+        }
+        if(importedConfig.market && ['futures','spot'].includes(importedConfig.market)){
+          config.market = importedConfig.market;
+        }
+        config.focusChart = null;
+      }else{
+        nextWatch.forEach(s=>{ if(!config.watch.includes(s)) config.watch.push(s); });
+        nextCharts.forEach(s=>{ if(!config.charts.includes(s)) config.charts.push(s); });
+      }
+    }else{
+      if(mode==='replace'){
+        config.watch = [...importedTokens];
+        config.charts = importedTokens.slice(0, 6);
+        config.focusChart = null;
+      }else{
+        importedTokens.forEach(s=>{
+          if(!config.watch.includes(s)) config.watch.push(s);
+          if(config.charts.length < 6 && !config.charts.includes(s)) config.charts.push(s);
+        });
+      }
+    }
+
+    closeImportModal();
+    save();
+    updateMarketHeaderUI();
+    renderWatch();
+    renderCharts();
+    renderTickerTape();
+    connect(true);
+    toast('Config imported & synced (' + config.watch.length + ' tokens)');
   };
 
   // Pairing Modal Logic
