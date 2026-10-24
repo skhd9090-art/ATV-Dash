@@ -9,6 +9,13 @@ Realtime multi-screen crypto trading dashboard designed for synchronized display
 - **Binance WebSocket Feed (Futures & Spot):** Streamlines live tick-by-tick prices and 24h percentage changes directly from Binance public feeds (`wss://fstream.binance.com/ws` for USDⓈ-M Futures, `wss://stream.binance.com:9443` for Spot).
 - **Market Switcher (Futures ⇄ Spot):** Seamlessly switch between USDⓈ-M Perpetual Futures and Spot markets with automatic contract availability verification and clear fallback messaging for tokens without futures contracts.
 - **Sticky Live Price Ticker Tape:** Always-visible, fixed bottom marquee displaying dynamically updating live prices and 24h percentage changes across your watchlist without obscuring chart contents.
+- **Prominent Market Price & Clean Shortnames:**
+  - Token shortnames used everywhere (`TAO`, `BTC`, `ETH`, `SOL`, etc.) instead of long names.
+  - Chart card headers feature large (16px, 800-weight) high-contrast prices and 24h percentage change pills (`+2.45%` in green / `-1.20%` in red) for instant visibility from across the room.
+- **Configurable Timezone with Live Charts Sync:**
+  - Toolbar dropdown allows selecting any global timezone (`UTC`, `IST - India`, `New York`, `London`, `Tokyo`, `Dubai`, etc.).
+  - Instantly updates both the top live beacon clock and all embedded TradingView candlestick chart timelines to the selected timezone.
+  - Automatically synchronizes across paired devices via Supabase.
 - **Drag & Drop and Button Reordering:**
   - **Watchlist:** Drag items up and down using handles or click `▲` / `▼` buttons to reorder tokens. Order synchronizes immediately across paired devices and the live ticker tape.
   - **Chart Grid:** Drag charts or use `◀` / `▶` buttons in chart headers to rearrange grid order with zero iframe reloading.

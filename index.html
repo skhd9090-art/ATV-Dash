@@ -135,9 +135,78 @@ select,input{background:#0b111a;color:var(--text);border:1px solid var(--line);b
   border-bottom:1px solid var(--line);
   background:#0f1622;
   font-size:13px;
+  user-select:none;
 }
-.chart-title{font-weight:700}
-.chart-price{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chart-meta{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+.chart-meta-top{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  line-height:1.2;
+}
+.chart-sym{
+  font-size:13px;
+  font-weight:700;
+  color:#9eb3c9;
+  letter-spacing:0.3px;
+  text-transform:uppercase;
+}
+.chart-market-pill{
+  font-size:9px;
+  font-weight:700;
+  padding:1px 4px;
+  border-radius:3px;
+  background:#152232;
+  color:var(--accent);
+  border:1px solid #233b56;
+  letter-spacing:0.4px;
+  text-transform:uppercase;
+  line-height:1.2;
+}
+.chart-meta-bottom{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  line-height:1.2;
+}
+.chart-price-val{
+  font-size:16px;
+  font-weight:800;
+  color:#ffffff;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-0.2px;
+  text-shadow:0 1px 2px rgba(0,0,0,0.4);
+}
+.chart-price-val .price-unit{
+  font-size:10px;
+  font-weight:600;
+  color:#6f869e;
+  margin-left:2px;
+}
+.chart-chg-pill{
+  font-size:11px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  padding:1px 5px;
+  border-radius:3px;
+  line-height:1.2;
+}
+.chart-chg-pill:empty{display:none}
+.chart-chg-pill.green{
+  background:#0e3020;
+  color:#00e676;
+  border:1px solid #00e67633;
+}
+.chart-chg-pill.red{
+  background:#3b1820;
+  color:#ff5252;
+  border:1px solid #ff525233;
+}
 
 .chart-frame{
   flex:1;
@@ -509,8 +578,19 @@ body.tv-mode .chart-frame{
   min-height:0;
 }
 body.tv-mode .chart-head{
-  padding:3px 8px;
+  padding:2px 8px;
   font-size:12px;
+}
+body.tv-mode .chart-sym{
+  font-size:11px;
+}
+body.tv-mode .chart-price-val{
+  font-size:15px;
+  font-weight:800;
+}
+body.tv-mode .chart-chg-pill{
+  font-size:10px;
+  padding:1px 4px;
 }
 body.tv-mode.has-focus .charts,
 body.tv-mode:has(.focus-card) .charts{
@@ -611,6 +691,20 @@ body.tv-mode .tv-page-nav{
     <label class="field">Market <select id="marketSelect"><option value="futures" selected>USDⓈ-M Futures</option><option value="spot">Spot</option></select></label>
     <label class="field">Layout <select id="layoutSelect"><option value="1">1 chart</option><option value="2">2 columns</option><option value="3" selected>3 columns</option><option value="4">4 columns</option></select></label>
     <label class="field">Interval <select id="intervalSelect"><option>1</option><option>5</option><option selected>15</option><option>30</option><option>60</option><option>240</option><option>D</option><option>W</option></select></label>
+    <label class="field">Timezone <select id="tzSelect">
+      <option value="Etc/UTC" selected>UTC</option>
+      <option value="Asia/Kolkata">IST (India)</option>
+      <option value="America/New_York">New York (EST/EDT)</option>
+      <option value="America/Chicago">Chicago (CST/CDT)</option>
+      <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+      <option value="Europe/London">London (GMT/BST)</option>
+      <option value="Europe/Paris">Paris/Berlin (CET)</option>
+      <option value="Asia/Dubai">Dubai (GST)</option>
+      <option value="Asia/Singapore">Singapore / HK (SGT)</option>
+      <option value="Asia/Tokyo">Tokyo (JST)</option>
+      <option value="Australia/Sydney">Sydney (AEST)</option>
+      <option value="exchange">Exchange</option>
+    </select></label>
     <label class="field hide-tv">Scale <select id="scaleSelect"><option value="100">100%</option><option value="125" selected>125% TV</option><option value="140">140% Large</option></select></label>
     <button id="gridBtn" class="hide" title="Exit focus view and return to multi-chart grid">☷ Grid view</button>
     <button id="tvModeBtn">▣ TV display mode</button>
@@ -739,7 +833,20 @@ body.tv-mode .tv-page-nav{
 <script>
 (() => {
   const defaults=['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','TAOUSDT'];
-  const pretty={BTCUSDT:'Bitcoin',ETHUSDT:'Ethereum',BNBUSDT:'BNB',SOLUSDT:'Solana',XRPUSDT:'XRP',TAOUSDT:'Bittensor',ADAUSDT:'Cardano',DOGEUSDT:'Dogecoin',LINKUSDT:'Chainlink',AVAXUSDT:'Avalanche',LTCUSDT:'Litecoin',SUIUSDT:'Sui',TONUSDT:'Toncoin',NEARUSDT:'Near',PEPEUSDT:'Pepe'};
+  const tzLabels = {
+    'Etc/UTC': 'UTC',
+    'Asia/Kolkata': 'IST',
+    'America/New_York': 'EST/EDT',
+    'America/Chicago': 'CST/CDT',
+    'America/Los_Angeles': 'PST/PDT',
+    'Europe/London': 'GMT/BST',
+    'Europe/Paris': 'CET/CEST',
+    'Asia/Dubai': 'GST',
+    'Asia/Singapore': 'SGT',
+    'Asia/Tokyo': 'JST',
+    'Australia/Sydney': 'AEST',
+    'exchange': 'EXCH'
+  };
   
   let config={
     watch:defaults.slice(),
@@ -749,6 +856,7 @@ body.tv-mode .tv-page-nav{
     scale:'125',
     market:'futures', // 'futures' | 'spot'
     focusChart:null,
+    timezone:'Etc/UTC',
     updatedAt:Date.now()
   };
 
@@ -762,6 +870,7 @@ body.tv-mode .tv-page-nav{
     if(saved&&Array.isArray(saved.watch)&&Array.isArray(saved.charts)){
       config={...config,...saved};
       if(!config.market) config.market='futures';
+      if(!config.timezone) config.timezone='Etc/UTC';
       hasLocalCustomConfig = true;
     }
   }catch(e){}
@@ -773,6 +882,7 @@ body.tv-mode .tv-page-nav{
     if(String(a.cols) !== String(b.cols)) return false;
     if(String(a.scale) !== String(b.scale)) return false;
     if((a.focusChart || null) !== (b.focusChart || null)) return false;
+    if((a.timezone || 'Etc/UTC') !== (b.timezone || 'Etc/UTC')) return false;
     if(!Array.isArray(a.watch) || !Array.isArray(b.watch)) return false;
     if(a.watch.length !== b.watch.length) return false;
     for(let i=0; i<a.watch.length; i++){
@@ -925,6 +1035,7 @@ body.tv-mode .tv-page-nav{
       const prevFocus=config.focusChart;
       const prevMarket=config.market;
       const prevInterval=config.interval;
+      const prevTimezone=config.timezone;
       const prevCharts=[...config.charts];
 
       config={
@@ -934,17 +1045,21 @@ body.tv-mode .tv-page-nav{
         charts:[...new Set(next.charts)],
         market:next.market||config.market||'futures',
         focusChart:next.focusChart||null,
-        scale:next.scale||config.scale||'125'
+        scale:next.scale||config.scale||'125',
+        timezone:next.timezone||config.timezone||'Etc/UTC'
       };
       localStorage.setItem('cryptowall-config',JSON.stringify(config));
       applyScale(config.scale);
       if($('marketSelect')) $('marketSelect').value=config.market;
+      if($('tzSelect')) $('tzSelect').value=config.timezone;
       updateMarketHeaderUI();
+      updateClock();
       renderWatch();
 
       const chartsChanged = config.market!==prevMarket ||
                             config.interval!==prevInterval ||
                             config.focusChart!==prevFocus ||
+                            (config.timezone||'Etc/UTC')!==(prevTimezone||'Etc/UTC') ||
                             JSON.stringify(config.charts)!==JSON.stringify(prevCharts);
       if(chartsChanged){
         renderCharts();
@@ -1057,7 +1172,21 @@ body.tv-mode .tv-page-nav{
     return 'BINANCE:'+s;
   }
 
-  function displayName(s){return pretty[s]||s.replace('USDT','')}
+  function displayName(s){
+    if(!s) return '';
+    return String(s).replace(/USDT$/i, '');
+  }
+
+  function fmtChartPrice(p, isAvail=true){
+    if(!isAvail) return '<span class="badge-unavail">No Futures Pair</span>';
+    if(p==null) return 'Live price loading…';
+    return fmt(p) + ' <span class="price-unit">USDT</span>';
+  }
+
+  function fmtChartChange(c){
+    if(c==null) return '';
+    return (c>=0?'+':'') + Number(c).toFixed(2) + '%';
+  }
 
   function updateMarketHeaderUI(){
     const isFutures = config.market==='futures';
@@ -1116,7 +1245,7 @@ body.tv-mode .tv-page-nav{
               ${displayName(s)}
               ${isFocused?'<span class="coin-tv-tag">ON TV</span>':''}
             </div>
-            <div class="coin-symbol">${s} ${config.market==='futures'?'Perp':''}</div>
+            <div class="coin-symbol">USDT ${config.market==='futures'?'· Perp':'· Spot'}</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
@@ -1244,6 +1373,7 @@ body.tv-mode .tv-page-nav{
         const params=new URLSearchParams({
           symbol:tvSymbol(s),
           interval:config.interval,
+          timezone:config.timezone || 'Etc/UTC',
           theme:'dark',
           style:'1',
           locale:'en',
@@ -1360,11 +1490,13 @@ body.tv-mode .tv-page-nav{
     chartsToRender.forEach(s=>{
       let card = host.querySelector(`.chart-card[data-sym="${s}"]`);
       const price=prices[s];
+      const chg=changes[s];
       const isAvail=isSymbolAvailable(s);
 
       const params=new URLSearchParams({
         symbol:tvSymbol(s),
         interval:config.interval,
+        timezone:config.timezone || 'Etc/UTC',
         theme:'dark',
         style:'1',
         locale:'en',
@@ -1381,9 +1513,18 @@ body.tv-mode .tv-page-nav{
       const expectedSrc='https://www.tradingview.com/widgetembed/?'+params.toString();
 
       if(card){
-        // Existing card in DOM: update price
+        // Existing card in DOM: update price, 24h change, and labels
         const pEl = card.querySelector(`#p-${s}`);
-        if(pEl) pEl.innerHTML = price==null?(isAvail?'Live price loading…':'<span class="badge-unavail">No Futures Pair</span>'):fmt(price)+' USDT';
+        if(pEl) pEl.innerHTML = fmtChartPrice(price, isAvail);
+        const chgEl = card.querySelector(`#p-chg-${s}`);
+        if(chgEl){
+          chgEl.textContent = fmtChartChange(chg);
+          chgEl.className = 'chart-chg-pill ' + (chg>=0 ? 'green' : 'red');
+        }
+        const symEl = card.querySelector('.chart-sym');
+        if(symEl) symEl.textContent = displayName(s);
+        const pillEl = card.querySelector('.chart-market-pill');
+        if(pillEl) pillEl.textContent = config.market==='futures'?'PERP':'SPOT';
 
         const existingIframe = card.querySelector('iframe');
         if(!isAvail && existingIframe){
@@ -1410,9 +1551,15 @@ body.tv-mode .tv-page-nav{
         const head=document.createElement('div');
         head.className='chart-head';
         head.innerHTML=`
-          <div>
-            <div class="chart-title">${displayName(s)} <span style="color:var(--muted);font-weight:400;font-size:11px">${s} ${config.market==='futures'?'PERP':''}</span></div>
-            <div class="chart-price" id="p-${s}">${price==null?(isAvail?'Live price loading…':'<span class="badge-unavail">No Futures Pair</span>'):fmt(price)+' USDT'}</div>
+          <div class="chart-meta">
+            <div class="chart-meta-top">
+              <span class="chart-sym">${displayName(s)}</span>
+              <span class="chart-market-pill">${config.market==='futures'?'PERP':'SPOT'}</span>
+            </div>
+            <div class="chart-meta-bottom">
+              <span class="chart-price-val" id="p-${s}">${fmtChartPrice(price, isAvail)}</span>
+              <span class="chart-chg-pill ${chg>=0?'green':'red'}" id="p-chg-${s}">${fmtChartChange(chg)}</span>
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:4px">
             <button class="chart-move-btn" data-chart-left="${s}" title="Move chart left">◀</button>
@@ -1527,6 +1674,7 @@ body.tv-mode .tv-page-nav{
     }
     $('layoutSelect').value=String(config.cols);
     $('intervalSelect').value=config.interval;
+    if($('tzSelect')) $('tzSelect').value=config.timezone||'Etc/UTC';
 
     // Update TV pagination nav
     updateTvPageNav(totalPages, isTvMode);
@@ -1618,9 +1766,14 @@ body.tv-mode .tv-page-nav{
     const changeText=(c>=0?'+':'')+Number(c).toFixed(2)+'%';
     const changeClass=c>=0?'green':'red';
 
-    // 1. Chart card price
+    // 1. Chart card price & 24h change
     const chartPriceEl=$('p-'+sym);
-    if(chartPriceEl) chartPriceEl.textContent=priceText+' USDT';
+    if(chartPriceEl) chartPriceEl.innerHTML=priceText+' <span class="price-unit">USDT</span>';
+    const chartChgEl=$('p-chg-'+sym);
+    if(chartChgEl){
+      chartChgEl.textContent=changeText;
+      chartChgEl.className='chart-chg-pill '+changeClass;
+    }
 
     // 2. Watchlist row price & change
     const wp=$('watch-p-'+sym), wc=$('watch-c-'+sym);
@@ -1757,6 +1910,16 @@ body.tv-mode .tv-page-nav{
   };
   $('layoutSelect').onchange=e=>{config.cols=Number(e.target.value);save();renderCharts()};
   $('intervalSelect').onchange=e=>{config.interval=e.target.value;save();renderCharts()};
+  if($('tzSelect')){
+    $('tzSelect').value=config.timezone||'Etc/UTC';
+    $('tzSelect').onchange=e=>{
+      config.timezone=e.target.value;
+      save();
+      updateClock();
+      renderCharts();
+      toast('Timezone set to '+(tzLabels[config.timezone]||config.timezone));
+    };
+  }
   $('scaleSelect').onchange=e=>{
     config.scale=e.target.value;
     applyScale(config.scale);
@@ -1853,11 +2016,26 @@ body.tv-mode .tv-page-nav{
 
   function updateClock(){
     const d=new Date();
-    const h=String(d.getUTCHours()).padStart(2,'0');
-    const m=String(d.getUTCMinutes()).padStart(2,'0');
-    const s=String(d.getUTCSeconds()).padStart(2,'0');
+    const tz=config.timezone || 'Etc/UTC';
     const el=$('liveClock');
-    if(el) el.textContent=`${h}:${m}:${s} UTC`;
+    if(!el) return;
+    try{
+      const opts = {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: (tz==='exchange'||!tz) ? 'Etc/UTC' : tz
+      };
+      const timeStr = new Intl.DateTimeFormat('en-US', opts).format(d);
+      const label = tzLabels[tz] || tz.replace(/^.*\//, '');
+      el.textContent = `${timeStr} ${label}`;
+    }catch(e){
+      const h=String(d.getUTCHours()).padStart(2,'0');
+      const m=String(d.getUTCMinutes()).padStart(2,'0');
+      const s=String(d.getUTCSeconds()).padStart(2,'0');
+      el.textContent=`${h}:${m}:${s} UTC`;
+    }
   }
   setInterval(updateClock,1000);
   updateClock();
@@ -1977,8 +2155,8 @@ body.tv-mode .tv-page-nav{
   };
   $('resetBtn').onclick=()=>{
     if(confirm('Reset watchlist, charts and layout to defaults?')){
-      config={watch:defaults.slice(),charts:defaults.slice(0,6),interval:'15',cols:3,scale:'125',market:'futures',focusChart:null,updatedAt:Date.now()};
-      prices={};changes={};save();applyScale(config.scale);updateMarketHeaderUI();renderWatch();renderCharts();renderTickerTape();connect();toast('Reset complete');
+      config={watch:defaults.slice(),charts:defaults.slice(0,6),interval:'15',cols:3,scale:'125',market:'futures',focusChart:null,timezone:'Etc/UTC',updatedAt:Date.now()};
+      prices={};changes={};save();applyScale(config.scale);updateMarketHeaderUI();updateClock();renderWatch();renderCharts();renderTickerTape();connect();toast('Reset complete');
     }
   };
   $('copyConfig').onclick=()=>{
@@ -2063,6 +2241,7 @@ body.tv-mode .tv-page-nav{
         if(importedConfig.market && ['futures','spot'].includes(importedConfig.market)){
           config.market = importedConfig.market;
         }
+        if(importedConfig.timezone) config.timezone = String(importedConfig.timezone);
         config.focusChart = null;
       }else{
         nextWatch.forEach(s=>{ if(!config.watch.includes(s)) config.watch.push(s); });
@@ -2084,6 +2263,7 @@ body.tv-mode .tv-page-nav{
     closeImportModal();
     save();
     updateMarketHeaderUI();
+    updateClock();
     renderWatch();
     renderCharts();
     renderTickerTape();
@@ -2163,6 +2343,8 @@ body.tv-mode .tv-page-nav{
 
   applyScale(config.scale);
   updateMarketHeaderUI();
+  updateClock();
+  if($('tzSelect')) $('tzSelect').value=config.timezone||'Etc/UTC';
   renderWatch();
   renderCharts();
   renderTickerTape();
